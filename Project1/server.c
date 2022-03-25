@@ -34,7 +34,7 @@ int accept_client(int server_fd){
     int address_len = sizeof(client_address);
 
     client_fd = accept(server_fd, (struct sockaddr *)&client_address, (socklen_t*) &address_len);
-    printf("Client connected!\n");
+    printf("Client connected!(%d)\n", client_fd);
 
     return client_fd;
 }
