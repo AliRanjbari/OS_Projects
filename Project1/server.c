@@ -9,6 +9,10 @@
 #include <sys/time.h>
 
 
+
+
+/*____________IPC____________*/
+
 int setup_server(int port){
     struct sockaddr_in address;
     int server_fd;
@@ -41,24 +45,36 @@ int accept_client(int server_fd){
 
 int main(int argc, char* argv[]){
 
+    int port;
     int server_fd, client_fd;
     char buff[1024] = {0};
 
-    server_fd = setup_server(8080);
+    if(argc < 2){
+        write(1, "Erro: you did't enter port number\n", 34);
+        return 0;
+    }
+    else{
+        port = atoi(argv[1]);
+        sprintf(buff, "Connecting Server to port %d ...\n", port);
+        write(1, buff, 1024);
+    }
 
+    server_fd = setup_server(port);
     int client_count = 0;
 
-    while(1){
+    for(;;) {
         client_fd = accept_client(server_fd);
         client_count++;
 
         memset(buff, 0, 1024);
         recv(client_fd, buff, 1024, 0);
 
-        printf("Client said: %s\n", buff);
+        printf("Client %d said: %s\n",client_fd, buff);
 
+        
         sprintf(buff, "Hello from server, you're client %d", client_count);
         send(client_fd, buff, strlen(buff), 0);
+        // write(client_fd, "hello\n", 8);
 
         close(client_fd);
         
