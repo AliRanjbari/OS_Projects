@@ -44,12 +44,30 @@ int accept_client(int server_fd){
 }
 
 
+int play_game(int player_fd, int waiting_player_fd, int* port){
+
+    if(waiting_player_fd == -1){
+        return player_fd;
+    }
+    
+    char buff[10];
+    memset(buff, 0, 10);
+    sprintf(buff, "%d 1", ++(*port));
+    send(player_fd, buff, sizeof(buff), 0);
+    sprintf(buff, "%d 2", (*port));
+    send(waiting_player_fd, buff, sizeof(buff), 0);
+    printf("player %d and %d conncted with port %d\n", player_fd, waiting_player_fd, *port);
+    // *port = *port + 1;
+
+    return -1;          // no player is waiting
+}
+
+
+
 int main(int argc, char* argv[]){
 
     int port;
-    int server_fd, new_socket, max_sd;
     char buff[1024] = {0};
-    fd_set master_set, working_set;
 
     if(argc < 2){
         write(1, "Erro: you did't enter port number\n", 34);
@@ -60,6 +78,11 @@ int main(int argc, char* argv[]){
         sprintf(buff, "Connecting Server to port %d ...\n", port);
         write(1, buff, 1024);
     }
+
+
+    int server_fd, new_socket, max_sd;
+    int waiting_player_fd = -1;
+    fd_set master_set, working_set;
 
     server_fd = setup_server(port);
     FD_ZERO(&master_set);
@@ -96,10 +119,17 @@ int main(int argc, char* argv[]){
                         FD_CLR(i, &master_set);
                         continue;
                     }
-                    else {
-                        option = atoi(buff);
-                        printf("client %d: %d\n", i, option);
-                        // memset(buff, 0, 1024);
+                    option = atoi(buff);
+                    switch (option)
+                    {
+                    case 1:
+                        waiting_player_fd = play_game(i, waiting_player_fd, &port);
+                        break;
+                    case 2:
+                        /* code */
+                        break;
+                    default:
+                        break;
                     }
 
                 }

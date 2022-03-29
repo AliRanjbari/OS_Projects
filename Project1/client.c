@@ -43,20 +43,91 @@ int has_game_finished(Game* g){
     
 }
 
-int move(Game* g, int x, int y){
-    if(g->board[x][y])
-        return 0;           //failed
-    
-    g->board[x][y] = g->turn;
-
+void change_turn(Game* g){
     if(g->turn == 1)        // change the turn
         g->turn = 2;
     else
         g->turn = 1;
 
-    return 1;
+    g->move_left--;
 }
 
+void get_move(int *x, int *y){
+    char buff[1024] = {0};
+    write(1, "Your move (x y): ", 17);
+    for(;;){
+        memset(buff, 0, 1024);
+        read(0, buff, 1024);
+        sscanf(buff, "%d %d", x, y);
+        // printf("%d ")
+        if(*x < 1 || *x > 3 || *y < 1 || *y > 3)
+            printf("invalid move try again\n");
+        else
+            break;
+    }
+}
+
+void move(Game* g){
+    int x, y;
+
+    for(;;){
+        get_move(&x, &y);
+        x--;            // move has gotten between 1 and 3
+        y--;
+        if(g->board[x][y]){
+            printf("you can't mark here\n");          //failed
+            continue;
+        }
+        
+        g->board[x][y] = g->turn;
+        change_turn(g);
+        break;
+    }
+}
+
+
+char* board_to_string(Game* g){
+    char* buff = (char*)malloc(sizeof(char)*20);
+    sprintf(buff, "%d %d %d\n%d %d %d\n%d %d %d\n",  g->board[0][0],
+                                                     g->board[0][1],
+                                                     g->board[0][2],
+                                                     g->board[1][0],
+                                                     g->board[1][1],
+                                                     g->board[1][2],
+                                                     g->board[2][0],
+                                                     g->board[2][1],
+                                                     g->board[2][2]);
+
+
+    return buff;
+}
+
+void string_to_bord(Game* g, char* buff){
+    sscanf(buff, "%d %d %d\n%d %d %d\n %d %d %d\n", &g->board[0][0],
+                                                     &g->board[0][1],
+                                                     &g->board[0][2],
+                                                     &g->board[1][0],
+                                                     &g->board[1][1],
+                                                     &g->board[1][2],
+                                                     &g->board[2][0],
+                                                     &g->board[2][1],
+                                                     &g->board[2][2]);
+}
+
+Game* start_game(){
+
+    Game* game = (Game*)malloc(sizeof(Game));
+
+    for(int i=0; i<3; i++)          // initilize board with zero
+        for(int j=0; j<3; j++)
+            game->board[i][j] = 0;
+
+    game->turn = 1;
+    game->move_left = 9;
+
+
+    return game;
+}
 
 
 /*____________IPC____________*/
@@ -83,7 +154,61 @@ int connect_server(int port){
 }
 
 
+void play(int port, int player_number){
 
+    int sock, broadcast = 1, opt = 1;
+    char buffer[1024] = {0};
+    struct sockaddr_in bc_address;
+
+    sock = socket(AF_INET, SOCK_DGRAM, 0);
+    setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast));
+    setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt));
+
+    bc_address.sin_family = AF_INET; 
+    bc_address.sin_port = htons(port); 
+    bc_address.sin_addr.s_addr = inet_addr("192.168.1.255");
+
+    bind(sock, (struct sockaddr *)&bc_address, sizeof(bc_address));
+
+    printf("------------------------------------------------\n");
+    printf("Your now playing with another player in port(%d %d)\n", port, sock);
+    if(player_number == 1)
+        printf("your turn\n");
+
+
+    Game* g = start_game();
+    int just_send_message = 0;
+    for(;;){                                        //main for, for playing game
+        if(g->turn == player_number && just_send_message == 0){
+            printf("your turn to move\n");
+            move(g);
+            char* board_str = board_to_string(g);
+            sendto(sock, board_str, 20, 0,
+                        (struct sockaddr*)&bc_address, sizeof(bc_address));
+            free(board_str);
+            just_send_message = 1;
+        }
+        else {
+            printf("waiting for opponent to move\n");
+            recv(sock, buffer, 1024, 0);
+            if(just_send_message == 0) {                                  // check to not recieve our own message
+                string_to_bord(g, buffer);
+                change_turn(g);
+            }
+            just_send_message = 0;
+        }
+
+        if(just_send_message == 0) {
+            char* board_str = board_to_string(g);
+            printf("%s", board_to_string(g));
+            free(board_str);
+        }
+        // just_send_message--;
+    }
+    free(g);
+    close(sock);
+
+}
 
 int main(int argc, char* argv[]){
     int port;
@@ -104,7 +229,6 @@ int main(int argc, char* argv[]){
     printf("Select one option: \n1. Playing\n2. Watching\n3. exit\n");
 
     for(;;){
-        // printf("opt: ");
         write(1, "\nopt: ", 6);
         memset(buff, 0, 1024);
         read(0, buff, 1024);
@@ -113,8 +237,12 @@ int main(int argc, char* argv[]){
         switch (option)
         {
         case 1:
-            printf("Waiting for another player to join ...\n");
             send(fd, "1", 1, 0);
+            printf("Waiting for another player to join ...\n");
+            recv(fd, buff, 1024, 0);
+            int game_port, player_number;
+            sscanf(buff, "%d %d", &game_port, &player_number);
+            play(game_port, player_number);
             break;
         case 2:
             printf("Getting all open ports ...\n");
