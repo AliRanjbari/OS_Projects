@@ -104,14 +104,14 @@ char* board_to_string(Game* g){
 
 void string_to_bord(Game* g, char* buff){
     sscanf(buff, "%d %d %d\n%d %d %d\n %d %d %d\n", &g->board[0][0],
-                                                     &g->board[0][1],
-                                                     &g->board[0][2],
-                                                     &g->board[1][0],
-                                                     &g->board[1][1],
-                                                     &g->board[1][2],
-                                                     &g->board[2][0],
-                                                     &g->board[2][1],
-                                                     &g->board[2][2]);
+                                                    &g->board[0][1],
+                                                    &g->board[0][2],
+                                                    &g->board[1][0],
+                                                    &g->board[1][1],
+                                                    &g->board[1][2],
+                                                    &g->board[2][0],
+                                                    &g->board[2][1],
+                                                    &g->board[2][2]);
 }
 
 Game* start_game(){
@@ -154,7 +154,7 @@ int connect_server(int port){
 }
 
 
-void play(int port, int player_number){
+void play(int port, int player_number, int server_fd){
 
     int sock, broadcast = 1, opt = 1;
     char buffer[1024] = {0};
@@ -178,7 +178,12 @@ void play(int port, int player_number){
 
     Game* g = start_game();
     int just_send_message = 0;
-    for(;;){                                        //main for, for playing game
+    int winner;
+    for(;;){           //main for, for playing game
+        winner = has_game_finished(g);
+        if(winner != -1)
+            break;         
+
         if(g->turn == player_number && just_send_message == 0){
             printf("your turn to move\n");
             move(g);
@@ -191,7 +196,7 @@ void play(int port, int player_number){
         else {
             printf("waiting for opponent to move\n");
             recv(sock, buffer, 1024, 0);
-            if(just_send_message == 0) {                                  // check to not recieve our own message
+            if(just_send_message == 0) {                  // check to not recieve our own message
                 string_to_bord(g, buffer);
                 change_turn(g);
             }
@@ -203,11 +208,22 @@ void play(int port, int player_number){
             printf("%s", board_to_string(g));
             free(board_str);
         }
-        // just_send_message--;
     }
+
+    memset(buffer, 0, 1024);
+    sprintf(buffer, "Winner is player %d\n", winner);
+    if(player_number == 1){
+        sendto(sock, buffer, 20, 0,
+                            (struct sockaddr*)&bc_address, sizeof(bc_address));
+        char* board_str = board_to_string(g);
+
+        sprintf(buffer, "%d\n%s", port, board_str);
+        send(server_fd, buffer, sizeof(buffer), 0);
+        free(board_str);
+    }
+    write(1, buffer, 1024);
     free(g);
     close(sock);
-
 }
 
 int main(int argc, char* argv[]){
@@ -242,7 +258,7 @@ int main(int argc, char* argv[]){
             recv(fd, buff, 1024, 0);
             int game_port, player_number;
             sscanf(buff, "%d %d", &game_port, &player_number);
-            play(game_port, player_number);
+            play(game_port, player_number, fd);
             break;
         case 2:
             printf("Getting all open ports ...\n");

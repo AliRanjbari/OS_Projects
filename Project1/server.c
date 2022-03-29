@@ -57,16 +57,45 @@ int play_game(int player_fd, int waiting_player_fd, int* port){
     sprintf(buff, "%d 2", (*port));
     send(waiting_player_fd, buff, sizeof(buff), 0);
     printf("player %d and %d conncted with port %d\n", player_fd, waiting_player_fd, *port);
-    // *port = *port + 1;
 
     return -1;          // no player is waiting
 }
 
 
+void send_open_sorts(int fd, int open_ports[10]){
+    char buff[10] = {0};
+    
+
+    for(int i=0; i<10; i++){
+        if(open_ports[i] != 0){
+            memset(buff, 0, 10);
+            sprintf(buff, "%d\n", open_ports[i]);
+            send(fd, buff, sizeof(buff), 0);
+        }
+    }
+}
+
+void add_open_port(int port, int* open_ports) {
+    for(int i=0; i<10; i++)
+        if(open_ports[i] == 0){
+            open_ports[i] = port;
+            return;
+        }
+}
+
+void remove_open_port(int port, int* open_ports) {
+    for(int i=0; i<10; i++)
+        if(open_ports[i] == port){
+            open_ports[i] = 0;
+            return;
+        }
+}
+
 
 int main(int argc, char* argv[]){
 
     int port;
+    int open_ports[10] = {0};
     char buff[1024] = {0};
 
     if(argc < 2){
@@ -126,9 +155,10 @@ int main(int argc, char* argv[]){
                         waiting_player_fd = play_game(i, waiting_player_fd, &port);
                         break;
                     case 2:
-                        /* code */
+                        send_open_sorts(i, open_ports);
                         break;
                     default:
+                        printf("client %d: %s", i, buff);
                         break;
                     }
 
