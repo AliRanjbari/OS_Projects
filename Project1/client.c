@@ -226,6 +226,20 @@ void play(int port, int player_number, int server_fd){
     close(sock);
 }
 
+
+void get_open_ports(int server_fd){
+    char buff[10] = {0};
+
+    for(;;){
+        memset(buff, 0, 10);
+        recv(server_fd, buff, 10, 0);
+        if(strlen(buff) == 0)
+            return;
+        // printf("%d\n", strlen(buff));
+        write(1, buff, sizeof(buff));
+    }
+}
+
 int main(int argc, char* argv[]){
     int port;
     int fd;
@@ -263,6 +277,7 @@ int main(int argc, char* argv[]){
         case 2:
             printf("Getting all open ports ...\n");
             send(fd, "2", 1, 0);
+            get_open_ports(fd);
             break;
         case 3:
             write(1, "Goodby\n", 7);

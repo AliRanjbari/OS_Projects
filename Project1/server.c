@@ -62,17 +62,20 @@ int play_game(int player_fd, int waiting_player_fd, int* port){
 }
 
 
-void send_open_sorts(int fd, int open_ports[10]){
+void send_open_ports(int fd, int open_ports[10]){
     char buff[10] = {0};
-    
+    int n = 1;
 
     for(int i=0; i<10; i++){
         if(open_ports[i] != 0){
             memset(buff, 0, 10);
-            sprintf(buff, "%d\n", open_ports[i]);
+            sprintf(buff, "%d) %d\n", n, open_ports[i]);
             send(fd, buff, sizeof(buff), 0);
+            n++;
         }
     }
+    send(fd, "\0", 1, 0);
+
 }
 
 void add_open_port(int port, int* open_ports) {
@@ -153,9 +156,11 @@ int main(int argc, char* argv[]){
                     {
                     case 1:
                         waiting_player_fd = play_game(i, waiting_player_fd, &port);
+                        if(waiting_player_fd == -1)
+                            add_open_port(port, open_ports);
                         break;
                     case 2:
-                        send_open_sorts(i, open_ports);
+                        send_open_ports(i, open_ports);
                         break;
                     default:
                         printf("client %d: %s", i, buff);
