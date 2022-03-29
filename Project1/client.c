@@ -74,6 +74,7 @@ int connect_server(int port){
 
     if (connect(fd, (struct sockaddr *)&server_address, sizeof(server_address)) < 0){
         printf("Error in connecting to server\n");
+        exit(0);
     }
     else
         printf("connected to server\n");
@@ -100,13 +101,43 @@ int main(int argc, char* argv[]){
     }
 
     fd = connect_server(port);
+    printf("Select one option: \n1. Playing\n2. Watching\n3. exit\n");
 
     for(;;){
-        read(0, buff, 1024);
-        send(fd, buff, strlen(buff), 0);
-        recv(fd, buff, 1024, 0);
-        write(1, buff, sizeof(buff));
+        // printf("opt: ");
+        write(1, "\nopt: ", 6);
         memset(buff, 0, 1024);
+        read(0, buff, 1024);
+        int option = atoi(buff);
+
+        switch (option)
+        {
+        case 1:
+            printf("Waiting for another player to join ...\n");
+            send(fd, "1", 1, 0);
+            break;
+        case 2:
+            printf("Getting all open ports ...\n");
+            send(fd, "2", 1, 0);
+            break;
+        case 3:
+            write(1, "Goodby\n", 7);
+            return 0;
+            break;
+        default:
+            printf("Not a valid option\n");
+            break;
+        }
+
+
+
+
+        // read(0, buff, 1024);
+        // send(fd, buff, strlen(buff), 0);
+        // memset(buff, 0, 1024);
+        // recv(fd, buff, 1024, 0);
+        // write(1, buff, sizeof(buff));
+        // memset(buff, 0, 1024);
     }
     return 0;
 }

@@ -43,11 +43,13 @@ int accept_client(int server_fd){
     return client_fd;
 }
 
+
 int main(int argc, char* argv[]){
 
     int port;
-    int server_fd, client_fd;
+    int server_fd, new_socket, max_sd;
     char buff[1024] = {0};
+    fd_set master_set, working_set;
 
     if(argc < 2){
         write(1, "Erro: you did't enter port number\n", 34);
@@ -60,24 +62,49 @@ int main(int argc, char* argv[]){
     }
 
     server_fd = setup_server(port);
-    int client_count = 0;
+    FD_ZERO(&master_set);
+    max_sd = server_fd;
+    FD_SET(server_fd, &master_set);
+
+    write(1, "Server is running\n", 18);
 
     for(;;) {
-        client_fd = accept_client(server_fd);
-        client_count++;
+        working_set = master_set;
+        select(max_sd + 1, &working_set, NULL, NULL, NULL);
 
-        memset(buff, 0, 1024);
-        recv(client_fd, buff, 1024, 0);
+        for(int i=0; i <= max_sd; i++){
+            if(FD_ISSET(i, &working_set)) {
 
-        printf("Client %d said: %s\n",client_fd, buff);
+                if(i == server_fd) {
+                    new_socket = accept_client(server_fd);
+                    FD_SET(new_socket, &master_set);
+                    if(new_socket > max_sd)
+                        max_sd = new_socket;
+                    memset(buff, 0, 1024);
+                    sprintf(buff, "New client connected(%d)\n" ,new_socket);
+                    write(1, buff, 1024);   
+                }
 
-        
-        sprintf(buff, "Hello from server, you're client %d", client_count);
-        send(client_fd, buff, strlen(buff), 0);
-        // write(client_fd, "hello\n", 8);
+                else{
+                    int bytes_recieved;
+                    memset(buff, 0, 1024);
+                    bytes_recieved = recv(i, buff, 1024, 0);
+                    int option = 10;
+                    if(bytes_recieved == 0) {
+                        printf("client fd = %d closed\n", i);
+                        close(i);
+                        FD_CLR(i, &master_set);
+                        continue;
+                    }
+                    else {
+                        option = atoi(buff);
+                        printf("client %d: %d\n", i, option);
+                        // memset(buff, 0, 1024);
+                    }
 
-        close(client_fd);
-        
+                }
+            }
+        }
     }
 
 
