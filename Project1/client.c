@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -9,6 +10,8 @@
 #include <sys/time.h>
 
 /*____________GAME____________*/
+
+int has_time = 1;
 
 int DIR[8][3][2] = {{{0,0},{0,1},{0,2}},
                     {{1,0},{1,1},{1,2}},
@@ -55,23 +58,27 @@ void change_turn(Game* g){
 void get_move(int *x, int *y){
     char buff[1024] = {0};
     write(1, "Your move (x y): ", 17);
-    for(;;){
+    while(has_time){
         memset(buff, 0, 1024);
         read(0, buff, 1024);
         sscanf(buff, "%d %d", x, y);
-        // printf("%d ")
         if(*x < 1 || *x > 3 || *y < 1 || *y > 3)
             printf("invalid move try again\n");
         else
             break;
     }
+
 }
 
 void move(Game* g){
     int x, y;
-
-    for(;;){
+    for(;;) {
         get_move(&x, &y);
+        if(has_time == 0){
+            g->move_left++;
+            break;
+        }
+
         x--;            // move has gotten between 1 and 3
         y--;
         if(g->board[x][y]){
@@ -80,9 +87,9 @@ void move(Game* g){
         }
         
         g->board[x][y] = g->turn;
-        change_turn(g);
         break;
     }
+    change_turn(g);
 }
 
 
@@ -153,6 +160,10 @@ int connect_server(int port){
     return fd;
 }
 
+void time_up(int sig) {
+    has_time = 0;
+}
+
 
 void play(int port, int player_number, int server_fd){
 
@@ -181,12 +192,18 @@ void play(int port, int player_number, int server_fd){
     int winner;
     for(;;){           //main for, for playing game
         winner = has_game_finished(g);
+        has_time = 1;
         if(winner != -1)
             break;         
 
         if(g->turn == player_number && just_send_message == 0){
             printf("your turn to move\n");
+            alarm(5);
             move(g);
+            alarm(0);
+            if(has_time == 0)
+                printf("You missed your turn\n");
+
             char* board_str = board_to_string(g);
             sendto(sock, board_str, 20, 0,
                         (struct sockaddr*)&bc_address, sizeof(bc_address));
@@ -194,7 +211,8 @@ void play(int port, int player_number, int server_fd){
             just_send_message = 1;
         }
         else {
-            printf("waiting for opponent to move\n");
+            if(just_send_message == 0 && has_time == 1)
+                printf("waiting for opponent to move\n");
             recv(sock, buffer, 1024, 0);
             if(just_send_message == 0) {                  // check to not recieve our own message
                 string_to_bord(g, buffer);
@@ -203,9 +221,10 @@ void play(int port, int player_number, int server_fd){
             just_send_message = 0;
         }
 
-        if(just_send_message == 0) {
+        if(just_send_message == 0 && has_time == 1) {
             char* board_str = board_to_string(g);
             printf("%s", board_to_string(g));
+            write(1, "^^^^^^^^^^^^^^\n", 15);
             free(board_str);
         }
     }
@@ -290,6 +309,7 @@ void watch_game(int* open_ports){
 }
 
 int main(int argc, char* argv[]){
+
     int port;
     int fd;
     char buff[1024] = {0};
@@ -307,6 +327,12 @@ int main(int argc, char* argv[]){
 
     fd = connect_server(port);
     printf("Select one option: \n1. Playing\n2. Watching\n3. exit\n");
+
+
+    // signal handeling
+    signal(SIGALRM, time_up);
+    siginterrupt(SIGALRM, 1);
+
 
     for(;;){
         write(1, "\nopt: ", 6);
