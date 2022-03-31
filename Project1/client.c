@@ -211,9 +211,11 @@ void play(int port, int player_number, int server_fd){
     }
 
     memset(buffer, 0, 1024);
-    sprintf(buffer, "Winner is player %d\n", winner);
+    sprintf(buffer, "Player (%d) Has Won!!\n", winner);
     if(player_number == 1){
         sendto(sock, buffer, 20, 0,
+                            (struct sockaddr*)&bc_address, sizeof(bc_address));
+        sendto(sock, "\0", 1, 0,
                             (struct sockaddr*)&bc_address, sizeof(bc_address));
         char* board_str = board_to_string(g);
 
@@ -227,23 +229,71 @@ void play(int port, int player_number, int server_fd){
 }
 
 
-void get_open_ports(int server_fd){
+void get_open_ports(int server_fd, int* open_ports){
     char buff[10] = {0};
+    for(int i=0; i<10; i++)
+        open_ports[i] = 0;
 
-    for(;;){
+    for(int i=0; i<10; i++) {
         memset(buff, 0, 10);
         recv(server_fd, buff, 10, 0);
         if(strlen(buff) == 0)
-            return;
-        // printf("%d\n", strlen(buff));
+            break;
+        
+        open_ports[i] = atoi(buff);
+        sprintf(buff, "%d) %d\n", i+1, open_ports[i]);
         write(1, buff, sizeof(buff));
     }
+}
+
+void watch_game(int* open_ports){
+    if(open_ports[0] == 0){
+        write(1, "No Game to Watch :(\n", 21);
+        return;
+    }
+
+    char buff[1024] = {0};
+
+    write(1, "enter you port: ", 16);
+    read(0, buff, 1024);
+    int port_number = atoi(buff);
+
+    if(port_number>10 || port_number<1 || open_ports[port_number-1] == 0){
+        write(2, "Wrong number!\n", 15);
+        return;
+    }
+
+    int port = open_ports[port_number-1];
+    int sock, broadcast = 1, opt = 1;
+    struct sockaddr_in bc_address;
+
+    sock = socket(AF_INET, SOCK_DGRAM, 0);
+    setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast));
+    setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt));
+
+    bc_address.sin_family = AF_INET; 
+    bc_address.sin_port = htons(port); 
+    bc_address.sin_addr.s_addr = inet_addr("192.168.1.255");
+
+    int m = bind(sock, (struct sockaddr *)&bc_address, sizeof(bc_address));
+
+    write(1, "Your now Watching a game\n", 26);
+    
+    for(;;){
+        memset(buff, 0, 1024);
+        recv(sock, buff, 1024, 0);
+        write(1, "**************next_move*************\n", 38);
+        write(1, buff, 1024);
+    }
+
+    close(sock);
 }
 
 int main(int argc, char* argv[]){
     int port;
     int fd;
     char buff[1024] = {0};
+    int open_ports[10];
 
     if(argc < 2){
         write(1, "Erro: you did't enter port number\n", 34);
@@ -277,7 +327,8 @@ int main(int argc, char* argv[]){
         case 2:
             printf("Getting all open ports ...\n");
             send(fd, "2", 1, 0);
-            get_open_ports(fd);
+            get_open_ports(fd, open_ports);
+            watch_game(open_ports);
             break;
         case 3:
             write(1, "Goodby\n", 7);

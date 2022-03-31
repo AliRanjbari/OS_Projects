@@ -69,9 +69,8 @@ void send_open_ports(int fd, int open_ports[10]){
     for(int i=0; i<10; i++){
         if(open_ports[i] != 0){
             memset(buff, 0, 10);
-            sprintf(buff, "%d) %d\n", n, open_ports[i]);
+            sprintf(buff, "%d\n", open_ports[i]);
             send(fd, buff, sizeof(buff), 0);
-            n++;
         }
     }
     send(fd, "\0", 1, 0);
@@ -92,6 +91,23 @@ void remove_open_port(int port, int* open_ports) {
             open_ports[i] = 0;
             return;
         }
+}
+
+
+int save_final_board(char* buff){
+    int port;
+    char temp[100] = {0};
+    sscanf(buff, "%d\n%s", &port, temp);
+    printf("port %d has closed\n", port);
+
+    int fd = open("log.txt", O_CREAT | O_WRONLY | O_APPEND);
+
+    write(fd, buff, strlen(buff));
+    write(fd, "__________________\n", 18);
+
+    close(fd);
+
+    return port;
 }
 
 
@@ -123,6 +139,7 @@ int main(int argc, char* argv[]){
 
     write(1, "Server is running\n", 18);
 
+    int port_to_close;
     for(;;) {
         working_set = master_set;
         select(max_sd + 1, &working_set, NULL, NULL, NULL);
@@ -163,7 +180,8 @@ int main(int argc, char* argv[]){
                         send_open_ports(i, open_ports);
                         break;
                     default:
-                        printf("client %d: %s", i, buff);
+                        port_to_close = save_final_board(buff);
+                        remove_open_port(port_to_close, open_ports);
                         break;
                     }
 
