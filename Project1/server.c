@@ -103,7 +103,7 @@ int save_final_board(char* buff){
     int fd = open("log.txt", O_CREAT | O_WRONLY | O_APPEND);
 
     write(fd, buff, strlen(buff));
-    write(fd, "__________________\n", 18);
+    write(fd, "__________________\n", 19);
 
     close(fd);
 

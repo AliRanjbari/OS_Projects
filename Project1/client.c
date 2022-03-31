@@ -198,7 +198,7 @@ void play(int port, int player_number, int server_fd){
 
         if(g->turn == player_number && just_send_message == 0){
             printf("your turn to move\n");
-            alarm(5);
+            alarm(60);                             // every player has one minut 
             move(g);
             alarm(0);
             if(has_time == 0)
@@ -301,6 +301,8 @@ void watch_game(int* open_ports){
     for(;;){
         memset(buff, 0, 1024);
         recv(sock, buff, 1024, 0);
+        if(strlen(buff) == 0)
+            break;
         write(1, "**************next_move*************\n", 38);
         write(1, buff, 1024);
     }
