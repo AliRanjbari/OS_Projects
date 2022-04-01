@@ -9,7 +9,11 @@
 #include <arpa/inet.h>
 #include <sys/time.h>
 
+
+char my_buffer[1024] = {0};
+
 /*____________GAME____________*/
+
 
 int has_time = 1;
 
@@ -63,7 +67,7 @@ void get_move(int *x, int *y){
         read(0, buff, 1024);
         sscanf(buff, "%d %d", x, y);
         if(*x < 1 || *x > 3 || *y < 1 || *y > 3)
-            printf("invalid move try again\n");
+            write(1, "invalid move try again\n", 24);
         else
             break;
     }
@@ -82,7 +86,7 @@ void move(Game* g){
         x--;            // move has gotten between 1 and 3
         y--;
         if(g->board[x][y]){
-            printf("you can't mark here\n");          //failed
+            write(1, "you can't mark here\n", 21);          //failed
             continue;
         }
         
@@ -151,11 +155,11 @@ int connect_server(int port){
     server_address.sin_addr.s_addr = inet_addr("127.0.0.1");
 
     if (connect(fd, (struct sockaddr *)&server_address, sizeof(server_address)) < 0){
-        printf("Error in connecting to server\n");
+        write(1, "Error in connecting to server\n", 31);
         exit(0);
     }
     else
-        printf("connected to server\n");
+        write(1, "connected to server\n", 21);
 
     return fd;
 }
@@ -181,10 +185,12 @@ void play(int port, int player_number, int server_fd){
 
     bind(sock, (struct sockaddr *)&bc_address, sizeof(bc_address));
 
-    printf("------------------------------------------------\n");
-    printf("Your now playing with another player in port(%d %d)\n", port, sock);
+    write(1, "------------------------------------------------\n", 50);
+    memset(my_buffer, 0, 1024);
+    sprintf(my_buffer, "Your now playing with another player in port(%d %d)\n", port, sock);
+    write(1, my_buffer, 1024);
     if(player_number == 1)
-        printf("your turn\n");
+        write(1, "your turn\n", 10);
 
 
     Game* g = start_game();
@@ -197,12 +203,12 @@ void play(int port, int player_number, int server_fd){
             break;         
 
         if(g->turn == player_number && just_send_message == 0){
-            printf("your turn to move\n");
+            write(1, "your turn to move\n", 19);
             alarm(60);                             // every player has one minut 
             move(g);
             alarm(0);
             if(has_time == 0)
-                printf("You missed your turn\n");
+                write(1, "You missed your turn\n", 22);
 
             char* board_str = board_to_string(g);
             sendto(sock, board_str, 20, 0,
@@ -212,7 +218,7 @@ void play(int port, int player_number, int server_fd){
         }
         else {
             if(just_send_message == 0 && has_time == 1)
-                printf("waiting for opponent to move\n");
+                write(1, "waiting for opponent to move\n", 30);
             recv(sock, buffer, 1024, 0);
             if(just_send_message == 0) {                  // check to not recieve our own message
                 string_to_bord(g, buffer);
@@ -223,7 +229,9 @@ void play(int port, int player_number, int server_fd){
 
         if(just_send_message == 0 && has_time == 1) {
             char* board_str = board_to_string(g);
-            printf("%s", board_to_string(g));
+            memset(my_buffer, 0, 1024);
+            sprintf(my_buffer, "%s", board_to_string(g));
+            write(1, my_buffer, 1024);
             write(1, "^^^^^^^^^^^^^^\n", 15);
             free(board_str);
         }
@@ -328,7 +336,7 @@ int main(int argc, char* argv[]){
     }
 
     fd = connect_server(port);
-    printf("Select one option: \n1. Playing\n2. Watching\n3. exit\n");
+    write(1, "Select one option: \n1. Playing\n2. Watching\n3. exit\n", 51);
 
 
     // signal handeling
@@ -346,14 +354,14 @@ int main(int argc, char* argv[]){
         {
         case 1:
             send(fd, "1", 1, 0);
-            printf("Waiting for another player to join ...\n");
+            write(1, "Waiting for another player to join ...\n", 39);
             recv(fd, buff, 1024, 0);
             int game_port, player_number;
             sscanf(buff, "%d %d", &game_port, &player_number);
             play(game_port, player_number, fd);
             break;
         case 2:
-            printf("Getting all open ports ...\n");
+            write(1, "Getting all open ports ...\n", 27);
             send(fd, "2", 1, 0);
             get_open_ports(fd, open_ports);
             watch_game(open_ports);
@@ -363,7 +371,7 @@ int main(int argc, char* argv[]){
             return 0;
             break;
         default:
-            printf("Not a valid option\n");
+            write(1, "Not a valid option\n", 19);
             break;
         }
 

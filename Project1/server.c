@@ -9,6 +9,8 @@
 #include <sys/time.h>
 
 
+char my_buffer[1024] = {0};
+
 
 
 /*____________IPC____________*/
@@ -38,7 +40,9 @@ int accept_client(int server_fd){
     int address_len = sizeof(client_address);
 
     client_fd = accept(server_fd, (struct sockaddr *)&client_address, (socklen_t*) &address_len);
-    printf("Client connected!(%d)\n", client_fd);
+    memset(my_buffer, 0, 1024);
+    sprintf(my_buffer, "Client connected!(%d)\n", client_fd);
+    write(1, my_buffer, 1024);
 
     return client_fd;
 }
@@ -56,7 +60,10 @@ int play_game(int player_fd, int waiting_player_fd, int* port){
     send(player_fd, buff, sizeof(buff), 0);
     sprintf(buff, "%d 2", (*port));
     send(waiting_player_fd, buff, sizeof(buff), 0);
-    printf("player %d and %d conncted with port %d\n", player_fd, waiting_player_fd, *port);
+
+    memset(my_buffer, 0, 1024);
+    sprintf(my_buffer, "player %d and %d conncted with port %d\n", player_fd, waiting_player_fd, *port);
+    write(1, my_buffer, 1024);
 
     return -1;          // no player is waiting
 }
@@ -98,7 +105,10 @@ int save_final_board(char* buff){
     int port;
     char temp[100] = {0};
     sscanf(buff, "%d\n%s", &port, temp);
-    printf("port %d has closed\n", port);
+
+    memset(my_buffer, 0, 1024);
+    sprintf(my_buffer, "port %d has closed\n", port);
+    write(1, my_buffer, 1024);
 
     int fd = open("log.txt", O_CREAT | O_WRONLY | O_APPEND);
 
@@ -163,7 +173,9 @@ int main(int argc, char* argv[]){
                     bytes_recieved = recv(i, buff, 1024, 0);
                     int option = 10;
                     if(bytes_recieved == 0) {
-                        printf("client fd = %d closed\n", i);
+                        memset(my_buffer, 0, 1024);
+                        sprintf(my_buffer, "client fd = %d closed\n", i);
+                        write(1, my_buffer, 1024);
                         close(i);
                         FD_CLR(i, &master_set);
                         continue;
