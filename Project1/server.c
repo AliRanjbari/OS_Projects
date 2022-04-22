@@ -166,7 +166,7 @@ int main(int argc, char* argv[]){
                     sprintf(buff, "New client connected(%d)\n" ,new_socket);
                     write(1, buff, 1024);   
                 }
-
+                
                 else{
                     int bytes_recieved;
                     memset(buff, 0, 1024);
