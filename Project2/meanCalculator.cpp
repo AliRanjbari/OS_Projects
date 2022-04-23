@@ -16,6 +16,7 @@ int main(int argc, char* argv[]) {
     pid_t pid;
     char* exec_argv[1];
     char str[1024];
+    char exec_file[] = "./class_handler.out";
 
     if(argc < 2) {
         cerr << "Error: not path selected\n";
@@ -30,10 +31,16 @@ int main(int argc, char* argv[]) {
         pid =  fork();
         if(pid == 0) {
             strcpy(str, file.path().c_str());
-            execve("./class_handler.out", exec_argv, NULL);
+
+            execl(exec_file, exec_file, str, NULL);
+            perror("execl");
+            exit(0);
         }
 
     }
     
+    while(wait(0) != -1);
+
+    wait(0);
     return 0;
 }

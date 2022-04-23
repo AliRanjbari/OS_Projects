@@ -23,7 +23,7 @@ int main(int argc, char* argv[]) {
     string path = argv[1];
     
 
-    
+    cout << "       " << argv[1] << endl;   
     
     return 0;
 }
