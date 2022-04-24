@@ -49,8 +49,7 @@ int main(int argc, char* argv[], char* envp[]) {
 
         pid =  fork();
         if(pid == 0) {
-            execl(exec_file, exec_file, 
-                get_student_name(file.path()).c_str(), NULL);
+            execl(exec_file, exec_file, file.path().c_str(), NULL);
             // perror("execl");
             exit(0);
         }

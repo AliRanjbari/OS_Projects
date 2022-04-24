@@ -29,7 +29,7 @@ void fork_each_class(char* argv[], int pipe_fd[2]) {
             execl(exec_class_handler, exec_class_handler, str,
                 to_string(pipe_fd[0]).c_str(),
                 to_string(pipe_fd[1]).c_str(), NULL);
-            perror("execl");
+            // perror("execl");
             exit(0);
         }
     }
