@@ -12,7 +12,9 @@ using namespace std;
 namespace fs = std::filesystem;
 
 
-const char exec_file[] = "./class_handler.out";
+const char exec_class_handler[] = "./class_handler.out";
+const char exec_course_handler[] = "./course_handler.out";
+const vector<string> COURSES = {"Physics", "English", "Math", "Literature", "Chemistery"};
 
 
 void fork_each_class(char* argv[], int pipe_fd[2]) {
@@ -20,10 +22,11 @@ void fork_each_class(char* argv[], int pipe_fd[2]) {
     char str[1024];
     for(const auto &file : fs::directory_iterator(argv[1])) {
         pid =  fork();
+
         if(pid == 0) {
             strcpy(str, file.path().c_str());
 
-            execl(exec_file, exec_file, str,
+            execl(exec_class_handler, exec_class_handler, str,
                 to_string(pipe_fd[0]).c_str(),
                 to_string(pipe_fd[1]).c_str(), NULL);
             perror("execl");
@@ -72,15 +75,26 @@ int main(int argc, char* argv[]) {
     char* names_stream = read_pipe(pipe_fd);
     close(pipe_fd[0]);
     
-    char* token_value = strtok(names_stream, " ");
-    vector<string> names;
-    while(token_value != NULL) {
-        names.push_back(token_value);
-        token_value = strtok(NULL, " ");
+
+    for(string course : COURSES) {
+        pid = fork();
+        if(pid == (pid_t)0) {
+            execl(exec_course_handler, exec_course_handler,
+                course.c_str(), names_stream, NULL);
+            // perror("execl");
+            exit(0);
+        }
     }
 
-    for(auto i: names)
-        cout << i << endl;
+    // char* token_value = strtok(names_stream, " ");
+    // vector<string> names;
+    // while(token_value != NULL) {
+    //     names.push_back(token_value);
+    //     token_value = strtok(NULL, " ");
+    // }
+
+    // for(auto i: names)
+    //     cout << i << endl;
 
     while(wait(0) != -1);
 
