@@ -14,6 +14,9 @@ namespace fs = std::filesystem;
 int main(int argc, char* argv[], char* envp[]) {
 
     pid_t pid;
+    FILE* stream;
+    int parent_pipe[2];
+    // int pipe_fd[2];
     char* exec_argv[1];
     char str[1024];
     char exec_file[] = "./student_handler.out";
@@ -23,16 +26,18 @@ int main(int argc, char* argv[], char* envp[]) {
         return -1;
     }
 
-    string path = argv[1];
+    parent_pipe[0] = atoi(argv[2]);
+    parent_pipe[1] = atoi(argv[3]);
+    close(parent_pipe[0]);
 
+    stream = fdopen(parent_pipe[1], "w");
 
-    // cout << argv[0] << "   " <<  argv[1] << endl;
-
-    
 
 
     for(const auto &file : fs::directory_iterator(argv[1])) {
-        cout << "   found: "<< file.path() << std::endl;  
+        
+        fprintf(stream, "%s ", file.path().c_str());
+
         pid =  fork();
         if(pid == 0) {
             strcpy(str, file.path().c_str());
@@ -43,7 +48,8 @@ int main(int argc, char* argv[], char* envp[]) {
         }
 
     }
-
+    fclose(stream);
+    close(parent_pipe[1]);
     
 
     
