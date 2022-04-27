@@ -14,7 +14,8 @@ namespace fs = std::filesystem;
 
 const char exec_class_handler[] = "./class_handler.out";
 const char exec_course_handler[] = "./course_handler.out";
-const vector<string> COURSES = {"Physics", "English", "Math", "Literature", "Chemistery"};
+const vector<string> COURSES = {"Physics", "English", "Math",
+                                "Literature", "Chemistry"};
 
 
 void fork_each_class(char* argv[], int pipe_fd[2]) {
@@ -42,10 +43,17 @@ char* read_pipe(int pipe_fd[2]) {
     stream = fdopen(pipe_fd[0], "r");
     int c;
     int i = 0;
-    while((c = fgetc(stream)) != EOF){
-        temp_str[i] = c;
-        i++;
+    int n_class = 3;
+    do{
+        c = fgetc(stream);
+        if(c == '!')
+            n_class--;
+        else {
+            temp_str[i] = c;
+            i++;
+        }
     }
+    while(n_class);
 
     fclose(stream);
     return temp_str;
@@ -81,20 +89,10 @@ int main(int argc, char* argv[]) {
         if(pid == (pid_t)0) {
             execl(exec_course_handler, exec_course_handler,
                 course.c_str(), names_stream, NULL);
-            // perror("execl");
             exit(0);
         }
     }
 
-    // char* token_value = strtok(names_stream, " ");
-    // vector<string> names;
-    // while(token_value != NULL) {
-    //     names.push_back(token_value);
-    //     token_value = strtok(NULL, " ");
-    // }
-
-    // for(auto i: names)
-    //     cout << i << endl;
 
     while(wait(0) != -1);
 

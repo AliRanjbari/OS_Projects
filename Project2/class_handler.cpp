@@ -4,7 +4,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <filesystem>
-// #include <fstream>
 #include <sstream>
 
 using namespace std;
@@ -50,13 +49,14 @@ int main(int argc, char* argv[], char* envp[]) {
         pid =  fork();
         if(pid == 0) {
             execl(exec_file, exec_file, file.path().c_str(), NULL);
-            // perror("execl");
             exit(0);
         }
-
     }
+    fprintf(stream, "!");
+
     fclose(stream);
     close(parent_pipe[1]);
+
 
     while(wait(0) != -1);
     

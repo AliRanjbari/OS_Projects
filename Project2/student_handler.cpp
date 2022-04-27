@@ -3,6 +3,7 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <fstream>
 #include <sstream>
 
@@ -18,36 +19,32 @@ string get_student_name(string path) {
     return name;
 }
 
+
 int main(int argc, char* argv[]) {
+
 
     if(argc < 2) {
         cerr << "Error: not path selected\n";
         return -1;
     }
 
-    string student_name = get_student_name(argv[1]);
-
     fstream file;
-    string temp;
-    FILE* fifo_write;
+    int fd;
     
-    // sleep(1);
+
     file.open(argv[1], ios::in);
     for(int i=0; i<5;i++) {
         string course, grade;
         string fifo_name;
         getline(file, course, ',');
         getline(file, grade, '\n');
-        // cout << course  << endl;
-        // cout << grade << endl;
+        fifo_name = course + "_" + get_student_name(argv[1]);
+        mkfifo(fifo_name.c_str(), 0666);
+        fd = open(fifo_name.c_str(), O_WRONLY);
         
-        fifo_name = course + "_" + student_name;
-        // cout << fifo_name << endl;
-        // fifo_write = fopen(fifo_name.c_str(), "w");
-        
-        // fwrite(grade.c_str(), 1,
-        //     strlen(grade.c_str()), fifo_write);
-        // fclose(fifo_write);
+        write(fd, grade.c_str(),
+            strlen(grade.c_str()) + 1);
+        close(fd);
     }
     file.close();
     

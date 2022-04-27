@@ -12,7 +12,7 @@ student_handler.out : student_handler.cpp
 	g++ -std=c++17 student_handler.cpp -o student_handler.out
 
 course_handler.out: course_handler.cpp
-	g++ -std=c++17 course_handler.cpp -o course_handler.out
+	g++ -std=c++17 course_handler.cpp -o course_handler.out 
 
 clean:
 	rm *.out
