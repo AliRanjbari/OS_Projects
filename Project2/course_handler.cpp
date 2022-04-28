@@ -34,7 +34,7 @@ int main(int argc, char* argv[]) {
     
     char str[32];
     int fd;
-    int sum_grade = 0;
+    double sum_grade = 0;
     fifo_names.erase(fifo_names.begin() + fifo_names.size()-1);
     // sort(fifo_names.begin(), fifo_names.end());
     // for(auto i : fifo_names)
@@ -47,12 +47,12 @@ int main(int argc, char* argv[]) {
         while(fd == -1);
 
         read(fd, str, 32);
-        sum_grade += atoi(str);
+        sum_grade += stod(str);
         close(fd);
         remove(fn.c_str());
     }
     
-    cout << "average of " << course_name << "is :";
+    cout << "average of '" << course_name << "' is :";
     cout << sum_grade / fifo_names.size() << endl;
     return 0;
 }
