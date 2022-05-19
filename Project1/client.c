@@ -182,6 +182,7 @@ void play(int port, int player_number, int server_fd){
     bc_address.sin_family = AF_INET; 
     bc_address.sin_port = htons(port); 
     bc_address.sin_addr.s_addr = inet_addr("192.168.1.255");
+    // bc_address.sin_addr.s_addr = INADDR_ANY;
 
     bind(sock, (struct sockaddr *)&bc_address, sizeof(bc_address));
 
@@ -301,6 +302,7 @@ void watch_game(int* open_ports){
     bc_address.sin_family = AF_INET; 
     bc_address.sin_port = htons(port); 
     bc_address.sin_addr.s_addr = inet_addr("192.168.1.255");
+    // bc_address.sin_addr.s_addr = INADDR_ANY;
 
     int m = bind(sock, (struct sockaddr *)&bc_address, sizeof(bc_address));
 
@@ -311,7 +313,7 @@ void watch_game(int* open_ports){
         recv(sock, buff, 1024, 0);
         if(strlen(buff) == 0)
             break;
-        write(1, "**************next_move*************\n", 38);
+        write(1, "***************************\n", 38);
         write(1, buff, 1024);
     }
 
@@ -377,13 +379,6 @@ int main(int argc, char* argv[]){
 
 
 
-
-        // read(0, buff, 1024);
-        // send(fd, buff, strlen(buff), 0);
-        // memset(buff, 0, 1024);
-        // recv(fd, buff, 1024, 0);
-        // write(1, buff, sizeof(buff));
-        // memset(buff, 0, 1024);
     }
     return 0;
 }
