@@ -54,6 +54,7 @@ typedef struct rgb
 typedef vector<vector<RGB>> PICTURE;
 
 
+
 const vector<std::pair<int, int>> DIRS = {{1,0},{1,1},{0,1},{-1,1},{-1, 0},{-1,-1},{0,-1},{1,-1}};
 
 PICTURE pic;
@@ -211,6 +212,28 @@ void medianFilter(PICTURE& input, PICTURE& output) {
       output[x][y] = median(x, y, input);
 }
 
+void inverseColorsFilter(PICTURE& input, PICTURE& output) {
+  picIsOriginal = !picIsOriginal;
+  for(int x=0; x < rows; x++)
+    for(int y=0; y < cols; y++) {
+      output[x][y].r = 255 - input[x][y].r;
+      output[x][y].g = 255 - input[x][y].g;
+      output[x][y].b = 255 - input[x][y].b;
+    }
+}
+
+void addPlusSign(PICTURE& input) {
+  for(int x=0; x < rows; x++) {
+    input[x][cols/2+1] = RGB{255, 255, 255};
+    input[x][cols/2] = RGB{255, 255, 255};
+    input[x][cols/2-1] = RGB{255, 255, 255};
+  }
+  for(int y=0; y < cols; y++) {
+    input[rows/2+1][y] = RGB{255, 255, 255};
+    input[rows/2][y] = RGB{255, 255, 255};
+    input[rows/2-1][y] = RGB{255, 255, 255};
+  }
+}
 
 int main(int argc, char *argv[])
 {
@@ -232,7 +255,10 @@ int main(int argc, char *argv[])
   cout << "--> Vertical Mirror Done!\n";
   medianFilter(pic, tempPic);
   cout << "--> Median: Done!\n";
-
+  inverseColorsFilter(tempPic, pic);
+  cout << "--> Inverse Colors: Done!\n";
+  addPlusSign(pic);
+  cout << "Added Plus sign!\n";
 
   if(!picIsOriginal)
     for(int i=0; i<rows; i++)
