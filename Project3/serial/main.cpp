@@ -3,14 +3,17 @@
 #include <fstream>
 #include <vector>
 #include <algorithm>
-#include <time.h>
-
+// #include <ctime>
+#include <chrono>
 
 using std::cout;
 using std::endl;
 using std::ifstream;
 using std::ofstream;
 using std::vector;
+using std::chrono::milliseconds;
+using std::chrono::system_clock;
+using std::chrono::duration_cast;
 
 #pragma pack(1)
 #pragma once
@@ -235,8 +238,15 @@ void addPlusSign(PICTURE& input) {
   }
 }
 
+auto current_time() {
+  return duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+}
+
 int main(int argc, char *argv[])
 {
+
+
+  auto timeStart = current_time();
   char *fileBuffer;
   int bufferSize;
   char *fileName = argv[1];
@@ -247,29 +257,41 @@ int main(int argc, char *argv[])
   }
   getPixlesFromBMP24(bufferSize, rows, cols, fileBuffer);
 
-
+  auto t1 = current_time();
   cout << "Filters: \n";
   horizontalMirrorFilter(pic, tempPic);
-  cout << "--> Horizontal Mirror: Done!\n";
+  auto t2 = current_time();
+  cout << "--> Horizontal Mirror: Done in " << t2 - t1 << " ms\n";
+  t1 = current_time();
   verticalMirrorFilter(tempPic, pic);
-  cout << "--> Vertical Mirror Done!\n";
+  t2 = current_time();
+  cout << "--> Vertical Mirror Done in " << t2 - t1 << " ms\n";
+  t1 = current_time();
   medianFilter(pic, tempPic);
-  cout << "--> Median: Done!\n";
+  t2 = current_time();
+  cout << "--> Median: Done in " << t2 - t1 << " ms\n";
+  t1 = current_time();
   inverseColorsFilter(tempPic, pic);
-  cout << "--> Inverse Colors: Done!\n";
+  t2 = current_time();
+  cout << "--> Inverse Colors: Done in " << t2 - t1 << " ms\n";
+  t1 = current_time();
   addPlusSign(pic);
-  cout << "Added Plus sign!\n";
+  t2 = current_time();
+  cout << "Added Plus sign: Done in " << t2 - t1 << " ms\n";
 
   if(!picIsOriginal)
     for(int i=0; i<rows; i++)
       for(int j=0; j<cols; j++)
         pic[i][j] = tempPic[i][j];
 
-  char outputName[] = "out.bmp";
+  char outputName[] = "output.bmp";
   writeOutBmp24(fileBuffer, outputName, bufferSize);
 
 
   
 
+  auto timeEnd = current_time();
+  cout << "------------------------------\n";
+  cout << "Execution Time: " << timeEnd - timeStart << " ms \n";
   return 0;
 }
