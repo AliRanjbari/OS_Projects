@@ -3,7 +3,6 @@
 #include <fstream>
 #include <vector>
 #include <algorithm>
-// #include <ctime>
 #include <chrono>
 
 using std::cout;
@@ -56,9 +55,9 @@ typedef struct rgb
 
 typedef vector<vector<RGB>> PICTURE;
 
-
-
-const vector<std::pair<int, int>> DIRS = {{1,0},{1,1},{0,1},{-1,1},{-1, 0},{-1,-1},{0,-1},{1,-1}};
+const vector<std::pair<int, int>> DIRS = {{1,0},{1,1},{0,1},{-1,1},
+                                          {-1, 0},{-1,-1},{0,-1},
+                                          {1,-1}};
 
 PICTURE pic;
 PICTURE tempPic;
@@ -115,19 +114,15 @@ void getPixlesFromBMP24(int end, int rows, int cols, char *fileReadBuffer)
         case 0:
           pic[i][j].r = fileReadBuffer[end - count];
           tempPic[i][j].r = fileReadBuffer[end - count];
-          // fileReadBuffer[end - count] is the red value
           break;
         case 1:
           pic[i][j].g = fileReadBuffer[end - count];
           tempPic[i][j].g = fileReadBuffer[end - count];
-          // fileReadBuffer[end - count] is the green value
           break;
         case 2:
           pic[i][j].b = fileReadBuffer[end - count];
           tempPic[i][j].b = fileReadBuffer[end - count];
-          // fileReadBuffer[end - count] is the blue value
           break;
-        // go to the next position in the buffer
         }
         count++;
       }
@@ -154,17 +149,13 @@ void writeOutBmp24(char *fileBuffer, const char *nameOfFileToCreate, int bufferS
         {
         case 0:
           fileBuffer[bufferSize - count] = pic[i][j].r;
-          // write red value in fileBuffer[bufferSize - count]
           break;
         case 1:
           fileBuffer[bufferSize - count] = pic[i][j].g;
-          // write green value in fileBuffer[bufferSize - count]
           break;
         case 2:
           fileBuffer[bufferSize - count] = pic[i][j].b;
-          // write blue value in fileBuffer[bufferSize - count]
           break;
-        // go to the next position in the buffer
         }
         count++;
       }
@@ -255,12 +246,15 @@ int main(int argc, char *argv[])
     cout << "File read error" << endl;
     return 1;
   }
-  getPixlesFromBMP24(bufferSize, rows, cols, fileBuffer);
-
   auto t1 = current_time();
+  getPixlesFromBMP24(bufferSize, rows, cols, fileBuffer);
+  auto t2 = current_time();
+  cout << "Read from file: Done in " << t2 - t1 << " ms\n";
+
+  t1 = current_time();
   cout << "Filters: \n";
   horizontalMirrorFilter(pic, tempPic);
-  auto t2 = current_time();
+  t2 = current_time();
   cout << "--> Horizontal Mirror: Done in " << t2 - t1 << " ms\n";
   t1 = current_time();
   verticalMirrorFilter(tempPic, pic);
@@ -277,7 +271,7 @@ int main(int argc, char *argv[])
   t1 = current_time();
   addPlusSign(pic);
   t2 = current_time();
-  cout << "Added Plus sign: Done in " << t2 - t1 << " ms\n";
+  cout << "--> Added Plus sign: Done in " << t2 - t1 << " ms\n";
 
   if(!picIsOriginal)
     for(int i=0; i<rows; i++)
@@ -285,8 +279,10 @@ int main(int argc, char *argv[])
         pic[i][j] = tempPic[i][j];
 
   char outputName[] = "output.bmp";
+  t1 = current_time();
   writeOutBmp24(fileBuffer, outputName, bufferSize);
-
+  t2 = current_time();
+  cout << "Wrote bmp: Done in " << t2 - t1 << " ms\n";
 
   
 

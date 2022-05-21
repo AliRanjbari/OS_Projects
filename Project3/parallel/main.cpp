@@ -1,12 +1,21 @@
 #include <iostream>
 #include <unistd.h>
 #include <fstream>
+#include <chrono>
+#include <vector>
+#include <algorithm>
+#include <cstdint>
 #include <pthread.h>
+
 
 using std::cout;
 using std::endl;
 using std::ifstream;
 using std::ofstream;
+using std::vector;
+using std::chrono::milliseconds;
+using std::chrono::system_clock;
+using std::chrono::duration_cast;
 
 #pragma pack(1)
 #pragma once
@@ -39,8 +48,31 @@ typedef struct tagBITMAPINFOHEADER
   DWORD biClrImportant;
 } BITMAPINFOHEADER, *PBITMAPINFOHEADER;
 
+typedef struct rgb {
+  DWORD r;
+  DWORD g;
+  DWORD b;
+} RGB;
+
+typedef vector<vector<RGB>> PICTURE;
+
+const int N_THREADS = 1;
+const int MAX_SIZE = 1080;
+const char OUTPUT_NAME[] = "output.bmp";
+const vector<std::pair<int, int>> DIRS = {{1,0},{1,1},{0,1},{-1,1},
+                                          {-1, 0},{-1,-1},{0,-1},
+                                          {1,-1}};
+
+PICTURE pic(MAX_SIZE, vector<RGB>(MAX_SIZE, RGB{0, 0, 0}));
+PICTURE tempPic(MAX_SIZE, vector<RGB>(MAX_SIZE, RGB{0, 0, 0}));
+bool picIsOriginal = true;
+
 int rows;
 int cols;
+char *fileBuffer;
+int bufferSize;
+
+
 
 bool fillAndAllocate(char *&buffer, const char *fileName, int &rows, int &cols, int &bufferSize)
 {
@@ -65,7 +97,7 @@ bool fillAndAllocate(char *&buffer, const char *fileName, int &rows, int &cols, 
     bufferSize = file_header->bfSize;
     return 1;
   }
-  else
+  else 
   {
     cout << "File" << fileName << " doesn't exist!" << endl;
     return 0;
@@ -73,11 +105,15 @@ bool fillAndAllocate(char *&buffer, const char *fileName, int &rows, int &cols, 
 }
 
 
-void getPixlesFromBMP24(int end, int rows, int cols, char *fileReadBuffer)
+void *getPixlesFromBMP24(void* id)
 {
-  int count = 1;
+  intptr_t thread_id = (intptr_t)id;
+  int start = rows / N_THREADS * (thread_id);
+  int end = rows / N_THREADS * (thread_id+1);
+  end = (thread_id+1==N_THREADS) ? rows : end;
+  int count = 1 + (start * 3 * cols);
   int extra = cols % 4;
-  for (int i = 0; i < rows; i++)
+  for (int i = start; i < end; i++)
   {
     count += extra;
     for (int j = cols - 1; j >= 0; j--)
@@ -86,31 +122,40 @@ void getPixlesFromBMP24(int end, int rows, int cols, char *fileReadBuffer)
         switch (k)
         {
         case 0:
-          // fileReadBuffer[end - count] is the red value
+          pic[i][j].r = fileBuffer[bufferSize - count];
+          tempPic[i][j].r = fileBuffer[bufferSize - count];
           break;
         case 1:
-          // fileReadBuffer[end - count] is the green value
+          pic[i][j].g = fileBuffer[bufferSize - count];
+          tempPic[i][j].g = fileBuffer[bufferSize - count];
           break;
         case 2:
-          // fileReadBuffer[end - count] is the blue value
+          pic[i][j].b = fileBuffer[bufferSize - count];
+          tempPic[i][j].b = fileBuffer[bufferSize - count];
           break;
-        // go to the next position in the buffer
         }
+        count++;
       }
   }
+  pthread_exit(NULL);
 }
 
-void writeOutBmp24(char *fileBuffer, const char *nameOfFileToCreate, int bufferSize)
+void *writeOutBmp24(void* id)
 {
-  std::ofstream write(nameOfFileToCreate);
+  std::ofstream write(OUTPUT_NAME);
   if (!write)
   {
-    cout << "Failed to write " << nameOfFileToCreate << endl;
-    return;
+    cout << "Failed to write " << OUTPUT_NAME << endl;
+    pthread_exit(NULL);
   }
-  int count = 1;
+
+  intptr_t thread_id = (intptr_t)id;
+  int start = rows / N_THREADS * (thread_id);
+  int end = rows / N_THREADS * (thread_id+1);
+  end = (thread_id+1==N_THREADS) ? rows : end;
+  int count = 1 + (start * 3 * cols);
   int extra = cols % 4;
-  for (int i = 0; i < rows; i++)
+  for (int i = start; i < end; i++)
   {
     count += extra;
     for (int j = cols - 1; j >= 0; j--)
@@ -119,25 +164,29 @@ void writeOutBmp24(char *fileBuffer, const char *nameOfFileToCreate, int bufferS
         switch (k)
         {
         case 0:
-          // write red value in fileBuffer[bufferSize - count]
+          fileBuffer[bufferSize - count] = pic[i][j].r;
           break;
         case 1:
-          // write green value in fileBuffer[bufferSize - count]
+          fileBuffer[bufferSize - count] = pic[i][j].g;
           break;
         case 2:
-          // write blue value in fileBuffer[bufferSize - count]
+          fileBuffer[bufferSize - count] = pic[i][j].b;
           break;
-        // go to the next position in the buffer
         }
+        count++;
       }
   }
   write.write(fileBuffer, bufferSize);
+  pthread_exit(NULL);
+}
+
+
+auto current_time() {
+  return duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 }
 
 int main(int argc, char *argv[])
 {
-  char *fileBuffer;
-  int bufferSize;
   char *fileName = argv[1];
   if (!fillAndAllocate(fileBuffer, fileName, rows, cols, bufferSize))
   {
@@ -145,9 +194,27 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  // read input file
-  // apply filters
-  // write output file
+  pthread_t threads[N_THREADS];
+
+
+  // ..........................................
+  auto t1 = current_time();
+  for(int i=0; i < N_THREADS; i++)
+    pthread_create(&threads[i], NULL, getPixlesFromBMP24, (void*)i);
+  for(int i=0; i<N_THREADS; i++)
+    pthread_join(threads[i], NULL);
+  auto t2 = current_time();
+  cout << "Read from file: Done in " << t2 - t1 << " ms\n";
+
+  // ..........................................
+  t1 = current_time();
+  for(int i=0; i < N_THREADS; i++)
+    pthread_create(&threads[i], NULL, writeOutBmp24, (void*)i);
+  for(int i=0; i<N_THREADS; i++)
+    pthread_join(threads[i], NULL);
+  t2 = current_time();
+  cout << "Wrote bmp: Done in " << t2 - t1 << " ms\n";
+
 
   return 0;
 }
